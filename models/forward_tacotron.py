@@ -1,4 +1,6 @@
 from pathlib import Path
+
+from torch.nn import LayerNorm
 from typing import Union
 
 import numpy as np
@@ -156,6 +158,7 @@ class ForwardTacotron(nn.Module):
         self.post_proj = nn.Linear(2 * postnet_dims, n_mels, bias=False)
         self.pitch_proj = nn.Conv1d(1, 2 * prenet_dims, kernel_size=3, padding=1)
         self.pitch_weight = pitch_weight
+        self.layer_norm = LayerNorm()
 
     def forward(self, x, mel, dur, mel_lens, pitch):
         if self.training:
@@ -174,6 +177,7 @@ class ForwardTacotron(nn.Module):
 
         #x = torch.cat([x, pitch_proj * self.pitch_weight], dim=-1)
         x = x + pitch_proj * self.pitch_weight
+        x = self.layer_norm(x)
 
         x = self.lr(x, dur)
         for i in range(x.size(0)):
@@ -211,7 +215,7 @@ class ForwardTacotron(nn.Module):
         x = self.prenet(x)
         #x = torch.cat([x, pitch_hat_proj * self.pitch_weight], dim=-1)
         x = x + pitch_hat_proj * self.pitch_weight
-
+        x = self.layer_norm(x)
 
         x = self.lr(x, dur)
         x = self.res_conv(x)
