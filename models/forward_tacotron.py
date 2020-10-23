@@ -158,7 +158,7 @@ class ForwardTacotron(nn.Module):
         self.post_proj = nn.Linear(2 * postnet_dims, n_mels, bias=False)
         self.pitch_proj = nn.Conv1d(1, 2 * prenet_dims, kernel_size=3, padding=1)
         self.pitch_weight = pitch_weight
-        self.layer_norm = LayerNorm()
+        self.layer_norm = LayerNorm(2*prenet_dims)
 
     def forward(self, x, mel, dur, mel_lens, pitch):
         if self.training:
