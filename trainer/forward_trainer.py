@@ -1,6 +1,4 @@
 import time
-import torch.nn.functional as F
-from sympy import symbols
 from torch.nn import CTCLoss
 from torch.optim import Adam
 
