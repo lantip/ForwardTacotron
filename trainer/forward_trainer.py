@@ -80,10 +80,10 @@ class ForwardTrainer:
                 dur_loss = self.l1_loss(dur_hat.unsqueeze(1), dur.unsqueeze(1), x_lens)
                 pitch_loss = self.l1_loss(pitch_hat, pitch.unsqueeze(1), x_lens)
 
+                self.aligner.zero_grad()
                 x_hat_gt = self.aligner(m).transpose(0, 1).log_softmax(2)
                 ctc_loss = self.ctc_loss(x_hat_gt, x, mel_lens, x_lens)
                 self.aligner_optim.zero_grad()
-                self.aligner.zero_grad()
                 ctc_loss.backward()
                 self.aligner_optim.step()
 
