@@ -1,5 +1,7 @@
 import time
 import torch.nn.functional as F
+from torch.nn import CTCLoss
+from torch.optim import Adam
 
 from typing import Tuple
 
@@ -9,6 +11,7 @@ from torch.utils.data.dataset import Dataset
 from torch.utils.tensorboard import SummaryWriter
 
 from models.forward_tacotron import ForwardTacotron
+from models.stt_model import Aligner
 from trainer.common import Averager, TTSSession, MaskedL1
 from utils import hparams as hp
 from utils.checkpoints import save_checkpoint
@@ -17,6 +20,7 @@ from utils.decorators import ignore_exception
 from utils.display import stream, simple_table, plot_mel, plot_pitch
 from utils.dsp import reconstruct_waveform, np_now
 from utils.paths import Paths
+from utils.text import phonemes
 
 
 class ForwardTrainer:
@@ -25,6 +29,9 @@ class ForwardTrainer:
         self.paths = paths
         self.writer = SummaryWriter(log_dir=paths.forward_log, comment='v1')
         self.l1_loss = MaskedL1()
+        self.ctc_loss = CTCLoss()
+        self.aligner = Aligner(80, len(phonemes), 512, 512)
+        self.aligner_optim = Adam(self.aligner.parameters(), lr=1e-14)
 
     def train(self, model: ForwardTacotron, optimizer: Optimizer) -> None:
         for i, session_params in enumerate(hp.forward_schedule, 1):
@@ -47,6 +54,7 @@ class ForwardTrainer:
                       ('Batch Size', session.bs),
                       ('Learning Rate', session.lr)])
 
+
         for g in optimizer.param_groups:
             g['lr'] = session.lr
 
@@ -55,6 +63,7 @@ class ForwardTrainer:
         duration_avg = Averager()
         pitch_loss_avg = Averager()
         device = next(model.parameters()).device  # use same device as model parameters
+        self.aligner.to(device)
         for e in range(1, epochs + 1):
             for i, (x, m, ids, x_lens, mel_lens, dur, pitch) in enumerate(session.train_set, 1):
 
@@ -71,7 +80,15 @@ class ForwardTrainer:
                 dur_loss = self.l1_loss(dur_hat.unsqueeze(1), dur.unsqueeze(1), x_lens)
                 pitch_loss = self.l1_loss(pitch_hat, pitch.unsqueeze(1), x_lens)
 
-                loss = m1_loss + m2_loss + 0.1 * dur_loss + 0.1 * pitch_loss
+                x_hat_gt = self.aligner(m).transpose(0, 1).log_softmax(2)
+                ctc_loss = self.ctc_loss(x_hat_gt, x, mel_lens, x_lens)
+                ctc_loss.backward()
+                self.aligner_optim.step()
+
+                x_hat = self.aligner(m2_hat).transpose(0, 1).log_softmax(2)
+                ctc_loss_hat = self.ctc_loss(x_hat, x, mel_lens, x_lens)
+
+                loss = m1_loss + m2_loss + 0.1 * dur_loss + 0.1 * pitch_loss + ctc_loss_hat
                 optimizer.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), hp.tts_clip_grad_norm)
@@ -97,6 +114,8 @@ class ForwardTrainer:
                 if step % hp.forward_plot_every == 0:
                     self.generate_plots(model, session)
 
+                self.writer.add_scalar('CTC_Loss/train_hat', ctc_loss_hat.item(), model.get_step())
+                self.writer.add_scalar('CTC_Loss/train', ctc_loss.item(), model.get_step())
                 self.writer.add_scalar('Mel_Loss/train', m1_loss + m2_loss, model.get_step())
                 self.writer.add_scalar('Pitch_Loss/train', pitch_loss, model.get_step())
                 self.writer.add_scalar('Duration_Loss/train', dur_loss, model.get_step())
