@@ -1,5 +1,6 @@
 import time
 import torch.nn.functional as F
+from sympy import symbols
 from torch.nn import CTCLoss
 from torch.optim import Adam
 
@@ -29,7 +30,7 @@ class ForwardTrainer:
         self.paths = paths
         self.writer = SummaryWriter(log_dir=paths.forward_log, comment='v1')
         self.l1_loss = MaskedL1()
-        self.ctc_loss = CTCLoss()
+        self.ctc_loss = CTCLoss(blank=len(phonemes)+1)
 
     def train(self, model: ForwardTacotron, optimizer: Optimizer) -> None:
         for i, session_params in enumerate(hp.forward_schedule, 1):
@@ -61,8 +62,8 @@ class ForwardTrainer:
         duration_avg = Averager()
         pitch_loss_avg = Averager()
         device = next(model.parameters()).device  # use same device as model parameters
-        aligner = Aligner(80, len(phonemes), 512, 512).to(device)
-        aligner_optim = Adam(self.aligner.parameters(), lr=1e-14)
+        aligner = Aligner(80, len(phonemes)+1, 512, 512).to(device)
+        aligner_optim = Adam(aligner.parameters(), lr=1e-4)
 
         for e in range(1, epochs + 1):
             for i, (x, m, ids, x_lens, mel_lens, dur, pitch) in enumerate(session.train_set, 1):
@@ -82,13 +83,13 @@ class ForwardTrainer:
 
                 aligner.zero_grad()
                 x_hat_gt = aligner(m).transpose(0, 1).log_softmax(2)
-                ctc_loss = ctc_loss(x_hat_gt, x, mel_lens, x_lens)
+                ctc_loss = self.ctc_loss(x_hat_gt, x, mel_lens, x_lens)
                 aligner_optim.zero_grad()
                 ctc_loss.backward()
                 aligner_optim.step()
 
                 x_hat = aligner(m2_hat).transpose(0, 1).log_softmax(2)
-                ctc_loss_hat = ctc_loss(x_hat, x, mel_lens, x_lens)
+                ctc_loss_hat = self.ctc_loss(x_hat, x, mel_lens, x_lens)
 
                 loss = m1_loss + m2_loss + 0.1 * dur_loss + 0.1 * pitch_loss + ctc_loss_hat
                 optimizer.zero_grad()
