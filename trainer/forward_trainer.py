@@ -83,6 +83,7 @@ class ForwardTrainer:
                 x_hat_gt = self.aligner(m).transpose(0, 1).log_softmax(2)
                 ctc_loss = self.ctc_loss(x_hat_gt, x, mel_lens, x_lens)
                 self.aligner_optim.zero_grad()
+                self.aligner.zero_grad()
                 ctc_loss.backward()
                 self.aligner_optim.step()
 
