@@ -142,7 +142,7 @@ class ForwardTacotron(nn.Module):
                             rnn_dim,
                             batch_first=True,
                             bidirectional=True)
-        self.lin = torch.nn.Linear(2 * rnn_dim, n_mels)
+        self.lin = torch.nn.Linear(2 * rnn_dim + 2 * prenet_dims + pitch_emb_dims, n_mels)
         self.register_buffer('step', torch.zeros(1, dtype=torch.long))
         self.postnet = CBHG(K=postnet_k,
                             in_channels=n_mels,
@@ -178,7 +178,9 @@ class ForwardTacotron(nn.Module):
         for i in range(x.size(0)):
             x[i, mel_lens[i]:, :] = 0
 
+        x_lr = self.lr(x, dur)
         x, _ = self.lstm(x)
+        x = torch.cat([x_lr, x], dim=-1)
 
         x = F.dropout(x,
                       p=self.dropout,
@@ -216,13 +218,15 @@ class ForwardTacotron(nn.Module):
             pitch_hat_proj = self.pitch_proj(pitch_hat).transpose(1, 2)
             x = torch.cat([x, pitch_hat_proj], dim=-1)
 
-        x = self.lr(x, dur)
-
+        x_lr = self.lr(x, dur)
         x, _ = self.lstm(x)
+        x = torch.cat([x_lr, x], dim=-1)
+
         x = F.dropout(x,
                       p=self.dropout,
                       training=self.training)
         x = self.lin(x)
+
         x = x.transpose(1, 2)
 
         x_post = self.postnet(x)
