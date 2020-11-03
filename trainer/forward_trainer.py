@@ -1,7 +1,6 @@
 import time
 from torch.nn import CTCLoss
 from torch.optim import Adam
-
 from typing import Tuple
 
 import torch

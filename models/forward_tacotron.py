@@ -1,7 +1,5 @@
 from pathlib import Path
-
-from torch.nn import LayerNorm
-from typing import Union
+from typing import Union, Callable, List
 
 import numpy as np
 
@@ -114,8 +112,7 @@ class ForwardTacotron(nn.Module):
                  pitch_rnn_dims,
                  pitch_dropout,
                  pitch_emb_dims,
-                 pitch_weight,
-                 res_conv_dims,
+                 pitch_proj_dropout,
                  rnn_dim,
                  prenet_k,
                  prenet_dims,
@@ -141,9 +138,7 @@ class ForwardTacotron(nn.Module):
                            channels=prenet_dims,
                            proj_channels=[prenet_dims, embed_dims],
                            num_highways=highways)
-        self.res_conv = ConvResNet(2 * prenet_dims,
-                                   conv_dims=res_conv_dims)
-        self.lstm = nn.LSTM(res_conv_dims,
+        self.lstm = nn.LSTM(2 * prenet_dims + pitch_emb_dims,
                             rnn_dim,
                             batch_first=True,
                             bidirectional=True)
@@ -156,9 +151,11 @@ class ForwardTacotron(nn.Module):
                             num_highways=highways)
         self.dropout = dropout
         self.post_proj = nn.Linear(2 * postnet_dims, n_mels, bias=False)
-        self.pitch_proj = nn.Conv1d(1, 2 * prenet_dims, kernel_size=3, padding=1)
-        self.pitch_weight = pitch_weight
-        self.layer_norm = LayerNorm(2*prenet_dims)
+        self.pitch_emb_dims = pitch_emb_dims
+        if pitch_emb_dims > 0:
+            self.pitch_proj = nn.Sequential(
+                nn.Conv1d(1, pitch_emb_dims, kernel_size=3, padding=1),
+                nn.Dropout(pitch_proj_dropout))
 
     def forward(self, x, mel, dur, mel_lens, pitch):
         if self.training:
@@ -167,23 +164,20 @@ class ForwardTacotron(nn.Module):
         x = self.embedding(x)
         dur_hat = self.dur_pred(x).squeeze()
         pitch_hat = self.pitch_pred(x).transpose(1, 2)
-
         pitch = pitch.unsqueeze(1)
-        pitch_proj = self.pitch_proj(pitch)
-        pitch_proj = pitch_proj.transpose(1, 2)
 
         x = x.transpose(1, 2)
         x = self.prenet(x)
 
-        #x = torch.cat([x, pitch_proj * self.pitch_weight], dim=-1)
-        x = x + pitch_proj * self.pitch_weight
-        x = self.layer_norm(x)
+        if self.pitch_emb_dims > 0:
+            pitch_proj = self.pitch_proj(pitch)
+            pitch_proj = pitch_proj.transpose(1, 2)
+            x = torch.cat([x, pitch_proj], dim=-1)
 
         x = self.lr(x, dur)
         for i in range(x.size(0)):
             x[i, mel_lens[i]:, :] = 0
 
-        x = self.res_conv(x)
         x, _ = self.lstm(x)
 
         x = F.dropout(x,
@@ -200,7 +194,10 @@ class ForwardTacotron(nn.Module):
         x = self.pad(x, mel.size(2))
         return x, x_post, dur_hat, pitch_hat
 
-    def generate(self, x, alpha=1.0, amplification=1.0):
+    def generate(self,
+                 x: List[int],
+                 alpha=1.0,
+                 pitch_function: Callable[[torch.tensor], torch.tensor] = lambda x: x) -> tuple:
         self.eval()
         device = next(self.parameters()).device  # use same device as parameters
         x = torch.as_tensor(x, dtype=torch.long, device=device).unsqueeze(0)
@@ -208,17 +205,19 @@ class ForwardTacotron(nn.Module):
         x = self.embedding(x)
         dur = self.dur_pred(x, alpha=alpha)
         dur = dur.squeeze(2)
-        pitch_hat = self.pitch_pred(x).transpose(1, 2) * amplification
-        pitch_hat_proj = self.pitch_proj(pitch_hat).transpose(1, 2)
+
+        pitch_hat = self.pitch_pred(x).transpose(1, 2)
+        pitch_hat = pitch_function(pitch_hat)
 
         x = x.transpose(1, 2)
         x = self.prenet(x)
-        #x = torch.cat([x, pitch_hat_proj * self.pitch_weight], dim=-1)
-        x = x + pitch_hat_proj * self.pitch_weight
-        x = self.layer_norm(x)
+
+        if self.pitch_emb_dims > 0:
+            pitch_hat_proj = self.pitch_proj(pitch_hat).transpose(1, 2)
+            x = torch.cat([x, pitch_hat_proj], dim=-1)
 
         x = self.lr(x, dur)
-        x = self.res_conv(x)
+
         x, _ = self.lstm(x)
         x = F.dropout(x,
                       p=self.dropout,
