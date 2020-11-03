@@ -83,6 +83,7 @@ class ForwardTrainer:
                 ctc_loss = self.ctc_loss(x_hat_gt, x, mel_lens, x_lens)
                 aligner_optim.zero_grad()
                 ctc_loss.backward()
+                torch.nn.utils.clip_grad_norm_(aligner.parameters(), hp.tts_clip_grad_norm)
                 aligner_optim.step()
 
                 x_hat = aligner(m2_hat).transpose(0, 1).log_softmax(2)

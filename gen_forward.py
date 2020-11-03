@@ -99,24 +99,23 @@ if __name__ == '__main__':
 
     print('\nInitialising Forward TTS Model...\n')
     tts_model = ForwardTacotron(embed_dims=hp.forward_embed_dims,
-                                num_chars=len(phonemes),
-                                durpred_rnn_dims=hp.forward_durpred_rnn_dims,
-                                durpred_conv_dims=hp.forward_durpred_conv_dims,
-                                durpred_dropout=hp.forward_durpred_dropout,
-                                pitch_rnn_dims=hp.forward_pitch_rnn_dims,
-                                pitch_conv_dims=hp.forward_pitch_conv_dims,
-                                pitch_dropout=hp.forward_pitch_dropout,
-                                pitch_weight=hp.forward_pitch_weight,
-                                pitch_emb_dims=hp.forward_pitch_emb_dims,
-                                res_conv_dims=hp.forward_res_conv_dims,
-                                rnn_dim=hp.forward_rnn_dims,
-                                postnet_k=hp.forward_postnet_K,
-                                postnet_dims=hp.forward_postnet_dims,
-                                prenet_k=hp.forward_prenet_K,
-                                prenet_dims=hp.forward_prenet_dims,
-                                highways=hp.forward_num_highways,
-                                dropout=hp.forward_dropout,
-                                n_mels=hp.num_mels).to(device)
+                            num_chars=len(phonemes),
+                            durpred_rnn_dims=hp.forward_durpred_rnn_dims,
+                            durpred_conv_dims=hp.forward_durpred_conv_dims,
+                            durpred_dropout=hp.forward_durpred_dropout,
+                            pitch_rnn_dims=hp.forward_pitch_rnn_dims,
+                            pitch_conv_dims=hp.forward_pitch_conv_dims,
+                            pitch_dropout=hp.forward_pitch_dropout,
+                            pitch_emb_dims=hp.forward_pitch_emb_dims,
+                            pitch_proj_dropout=hp.forward_pitch_proj_dropout,
+                            rnn_dim=hp.forward_rnn_dims,
+                            postnet_k=hp.forward_postnet_K,
+                            postnet_dims=hp.forward_postnet_dims,
+                            prenet_k=hp.forward_prenet_K,
+                            prenet_dims=hp.forward_prenet_dims,
+                            highways=hp.forward_num_highways,
+                            dropout=hp.forward_dropout,
+                            n_mels=hp.num_mels).to(device)
 
     tts_load_path = tts_weights if tts_weights else paths.forward_latest_weights
     tts_model.load(tts_load_path)
@@ -152,7 +151,7 @@ if __name__ == '__main__':
     for i, x in enumerate(inputs, 1):
 
         print(f'\n| Generating {i}/{len(inputs)}')
-        _, m, dur, pitch = tts_model.generate(x, alpha=args.alpha, amplification=args.ampl)
+        _, m, dur, pitch = tts_model.generate(x, alpha=args.alpha)
 
         if args.vocoder == 'griffinlim':
             v_type = args.vocoder
