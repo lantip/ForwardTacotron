@@ -109,7 +109,7 @@ tts_schedule = [(10,  1e-3,  10_000,  32),   # progressive training schedule
 
 tts_max_mel_len = 1250              # if you have a couple of extremely long spectrograms you might want to use this
 tts_clip_grad_norm = 1.0            # clips the gradient norm to prevent explosion - set to None if not needed
-tts_checkpoint_every = 10_000        # checkpoints the model every X steps
+tts_checkpoint_every = 10_000       # checkpoints the model every X steps
 tts_plot_every = 1000
 
 # ------------------------------------------------------------------------------------------------------------------#
@@ -129,9 +129,8 @@ forward_durpred_dropout = 0.5
 forward_pitch_conv_dims = 256
 forward_pitch_rnn_dims = 128
 forward_pitch_dropout = 0.5
-forward_pitch_emb_dims = 64
-forward_pitch_weight = 1.               # weights the pitch prediction, set to 0 if you want no pitch condition
-forward_res_conv_dims = 256
+forward_pitch_emb_dims = 64           # embedding dimension of pitch, set to 0 if you don't want pitch conditioning
+forward_pitch_proj_dropout = 0.
 
 forward_prenet_K = 16
 forward_postnet_K = 8
@@ -143,9 +142,9 @@ forward_dropout = 0.1
 
 # Training
 
-forward_schedule = [(1e-4, 1000_000,  32),    # progressive training schedule
-                    (1e-4, 30000_000,  32),   # (lr, step, batch_size)
-                    (2e-5, 600000_000,  32)]   # (lr, step, batch_size)
+forward_schedule = [(1e-4, 10_000,  32),    # progressive training schedule
+                    (1e-4, 300_000,  32),   # (lr, step, batch_size)
+                    (2e-5, 600_000,  32)]   # (lr, step, batch_size)
 
 forward_max_mel_len = 1250              # if you have a couple of extremely long spectrograms you might want to use this
 forward_clip_grad_norm = 1.0            # clips the gradient norm to prevent explosion - set to None if not needed
