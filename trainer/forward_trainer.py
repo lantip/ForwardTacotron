@@ -59,7 +59,7 @@ class ForwardTrainer:
         duration_avg = Averager()
         pitch_loss_avg = Averager()
         device = next(model.parameters()).device  # use same device as model parameters
-        aligner = Aligner(80, len(phonemes)+1, 512, 512).to(device)
+        aligner = Aligner(80, len(phonemes)+1, 256, 256).to(device)
         aligner_optim = Adam(aligner.parameters(), lr=1e-4)
 
         for e in range(1, epochs + 1):
