@@ -78,7 +78,6 @@ class ForwardTrainer:
                 dur_loss = self.l1_loss(dur_hat.unsqueeze(1), dur.unsqueeze(1), x_lens)
                 pitch_loss = self.l1_loss(pitch_hat, pitch.unsqueeze(1), x_lens)
 
-                aligner.zero_grad()
                 x_hat_gt = aligner(m).transpose(0, 1).log_softmax(2)
                 ctc_loss = self.ctc_loss(x_hat_gt, x, mel_lens, x_lens)
                 aligner_optim.zero_grad()
@@ -86,10 +85,12 @@ class ForwardTrainer:
                 torch.nn.utils.clip_grad_norm_(aligner.parameters(), hp.tts_clip_grad_norm)
                 aligner_optim.step()
 
-                x_hat = aligner(m2_hat).transpose(0, 1).log_softmax(2)
+                x_hat = aligner(m1_hat).transpose(0, 1).log_softmax(2)
+                x_hat_2 = aligner(m2_hat).transpose(0, 1).log_softmax(2)
                 ctc_loss_hat = self.ctc_loss(x_hat, x, mel_lens, x_lens)
+                ctc_loss_hat_2 = self.ctc_loss(x_hat_2, x, mel_lens, x_lens)
 
-                loss = m1_loss + m2_loss + 0.1 * dur_loss + 0.1 * pitch_loss + ctc_loss_hat
+                loss = m1_loss + m2_loss + 0.1 * dur_loss + 0.1 * pitch_loss + ctc_loss_hat + ctc_loss_hat_2
                 optimizer.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), hp.tts_clip_grad_norm)
