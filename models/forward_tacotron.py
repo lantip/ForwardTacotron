@@ -206,13 +206,13 @@ class ForwardTacotron(nn.Module):
         device = next(self.parameters()).device  # use same device as parameters
         x = torch.as_tensor(x, dtype=torch.long, device=device).unsqueeze(0)
 
-        x = self.embedding(x)
         dur = self.dur_pred(x, alpha=alpha)
         dur = dur.squeeze(2)
 
         pitch_hat = self.pitch_pred(x).transpose(1, 2)
         pitch_hat = pitch_function(pitch_hat)
 
+        x = self.embedding(x)
         x = x.transpose(1, 2)
         x = self.prenet(x)
 
