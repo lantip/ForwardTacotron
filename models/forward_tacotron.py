@@ -42,10 +42,12 @@ class LengthRegulator(nn.Module):
 
 class SeriesPredictor(nn.Module):
 
-    def __init__(self, in_dims, conv_dims=256, rnn_dims=64, dropout=0.5):
+    def __init__(self, in_dims, embed_dims=64, conv_dims=256, rnn_dims=64, dropout=0.5):
         super().__init__()
+        self.embedding = nn.Embedding(in_dims, embed_dims)
+
         self.convs = torch.nn.ModuleList([
-            BatchNormConv(in_dims, conv_dims, 5, activation=torch.relu),
+            BatchNormConv(embed_dims, conv_dims, 5, activation=torch.relu),
             BatchNormConv(conv_dims, conv_dims, 5, activation=torch.relu),
             BatchNormConv(conv_dims, conv_dims, 5, activation=torch.relu),
         ])
@@ -54,6 +56,7 @@ class SeriesPredictor(nn.Module):
         self.dropout = dropout
 
     def forward(self, x, alpha=1.0):
+        x = self.embedding(x)
         x = x.transpose(1, 2)
         for conv in self.convs:
             x = conv(x)
@@ -83,6 +86,7 @@ class ConvResNet(nn.Module):
             x = x_res + x
         x = x.transpose(1, 2)
         return x
+
 
 class BatchNormConv(nn.Module):
 
@@ -161,11 +165,11 @@ class ForwardTacotron(nn.Module):
         if self.training:
             self.step += 1
 
-        x = self.embedding(x)
         dur_hat = self.dur_pred(x).squeeze()
         pitch_hat = self.pitch_pred(x).transpose(1, 2)
         pitch = pitch.unsqueeze(1)
 
+        x = self.embedding(x)
         x = x.transpose(1, 2)
         x = self.prenet(x)
 
