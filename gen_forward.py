@@ -126,6 +126,7 @@ if __name__ == '__main__':
     else:
         with open('sentences.txt') as f:
             inputs = [clean_text(l.strip()) for l in f]
+        text = inputs[:]
         inputs = [text_to_sequence(t) for t in inputs]
 
     tts_k = tts_model.get_step() // 1000
@@ -155,6 +156,9 @@ if __name__ == '__main__':
 
         print(f'\n| Generating {i}/{len(inputs)}')
         _, m, dur, pitch = tts_model.generate(x, alpha=args.alpha, pitch_function=pitch_function)
+
+        for t, d in zip(text[i-1], dur):
+            print(f'{t} {d}')
 
         if args.vocoder == 'griffinlim':
             v_type = args.vocoder

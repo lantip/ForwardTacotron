@@ -11,6 +11,7 @@ from utils.files import get_files, pickle_binary
 from utils.paths import Paths
 from utils.text import clean_text
 from utils.text.recipes import ljspeech
+import soundfile as sf
 
 
 # Helper functions for argument types
@@ -46,6 +47,8 @@ class Preprocessor:
         peak = np.abs(y).max()
         if hp.peak_norm or peak > 1.0:
             y /= peak
+        item_id = path.stem
+        sf.write(f'/Users/cschaefe/datasets/audio_data/asvoice2_mfa_flat/{item_id}.wav', y, samplerate=hp.sample_rate)
         mel = melspectrogram(y)
         pitch, _ = pw.dio(y.astype(np.float64), hp.sample_rate,
                           frame_period=hp.hop_length / hp.sample_rate * 1000)
