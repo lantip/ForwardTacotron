@@ -129,11 +129,11 @@ class ForwardTacotron(nn.Module):
         self.rnn_dim = rnn_dim
         self.embedding = nn.Embedding(num_chars, embed_dims)
         self.lr = LengthRegulator()
-        self.dur_pred = SeriesPredictor(embed_dims,
+        self.dur_pred = SeriesPredictor(in_dims=num_chars,
                                         conv_dims=durpred_conv_dims,
                                         rnn_dims=durpred_rnn_dims,
                                         dropout=durpred_dropout)
-        self.pitch_pred = SeriesPredictor(embed_dims,
+        self.pitch_pred = SeriesPredictor(in_dims=num_chars,
                                           conv_dims=pitch_conv_dims,
                                           rnn_dims=pitch_rnn_dims,
                                           dropout=pitch_dropout)
