@@ -174,10 +174,7 @@ class ForwardTacotron(nn.Module):
             pitch_proj = pitch_proj.transpose(1, 2)
             x = torch.cat([x, pitch_proj], dim=-1)
 
-        x = self.lr(x, dur)
-        for i in range(x.size(0)):
-            x[i, mel_lens[i]:, :] = 0
-
+        x = self.lr(x, dur_hat)
         x, _ = self.lstm(x)
 
         x = F.dropout(x,

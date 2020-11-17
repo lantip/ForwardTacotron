@@ -7,7 +7,7 @@ from torch.utils.data.dataset import Dataset
 from torch.utils.tensorboard import SummaryWriter
 
 from models.forward_tacotron import ForwardTacotron
-from trainer.common import Averager, TTSSession, MaskedL1
+from trainer.common import Averager, TTSSession, MaskedL1, SoftDTWLoss
 from utils import hparams as hp
 from utils.checkpoints import save_checkpoint
 from utils.dataset import get_tts_datasets
@@ -23,6 +23,7 @@ class ForwardTrainer:
         self.paths = paths
         self.writer = SummaryWriter(log_dir=paths.forward_log, comment='v1')
         self.l1_loss = MaskedL1()
+        self.dtw_loss = SoftDTWLoss()
 
     def train(self, model: ForwardTacotron, optimizer: Optimizer) -> None:
         for i, session_params in enumerate(hp.forward_schedule, 1):
@@ -63,8 +64,8 @@ class ForwardTrainer:
 
                 m1_hat, m2_hat, dur_hat, pitch_hat = model(x, m, dur, mel_lens, pitch)
 
-                m1_loss = self.l1_loss(m1_hat, m, mel_lens)
-                m2_loss = self.l1_loss(m2_hat, m, mel_lens)
+                m1_loss = self.dtw_loss(m1_hat, m).mean() / 1000.
+                m2_loss = self.dtw_loss(m2_hat, m).mean() / 1000.
 
                 dur_loss = self.l1_loss(dur_hat.unsqueeze(1), dur.unsqueeze(1), x_lens)
                 pitch_loss = self.l1_loss(pitch_hat, pitch.unsqueeze(1), x_lens)
