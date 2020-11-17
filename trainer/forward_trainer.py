@@ -66,6 +66,9 @@ class ForwardTrainer:
 
                 m1_loss = self.dtw_loss(m1_hat, m).mean() / 1000.
                 m2_loss = self.dtw_loss(m2_hat, m).mean() / 1000.
+                if m1_loss + m2_loss > 100000:
+                    m1_loss = 0.
+                    m2_loss = 0.
 
                 dur_loss = self.l1_loss(dur_hat.unsqueeze(1), dur.unsqueeze(1), x_lens)
                 pitch_loss = self.l1_loss(pitch_hat, pitch.unsqueeze(1), x_lens)
