@@ -16,7 +16,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='TTS Generator')
     parser.add_argument('--input_text', '-i', type=str, help='[string] Type in something here and TTS will generate it!')
     parser.add_argument('--tts_weights', type=str, help='[string/path] Load in different FastSpeech weights')
-    parser.add_argument('--tts_weights_dur', type=str, help='[string/path] Load in different FastSpeech weights')
+    parser.add_argument('--tts_weights_pitch', type=str, help='[string/path] Load in different FastSpeech weights')
     parser.add_argument('--save_attention', '-a', dest='save_attn', action='store_true', help='Save Attention Plots')
     parser.add_argument('--force_cpu', '-c', action='store_true', help='Forces CPU-only training, even when in CUDA capable environment')
     parser.add_argument('--hp_file', metavar='FILE', default='hparams.py', help='The file to use for the hyperparameters')
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     tts_model.load(tts_load_path)
 
     print('\nInitialising Dur Forward TTS Model...\n')
-    tts_model_dur = ForwardTacotron(embed_dims=hp.forward_embed_dims,
+    tts_model_pitch = ForwardTacotron(embed_dims=hp.forward_embed_dims,
                                 num_chars=len(phonemes),
                                 durpred_rnn_dims=hp.forward_durpred_rnn_dims,
                                 durpred_conv_dims=hp.forward_durpred_conv_dims,
@@ -141,9 +141,9 @@ if __name__ == '__main__':
                                 dropout=hp.forward_dropout,
                                 n_mels=hp.num_mels).to(device)
 
-    tts_model_dur.load(args.tts_weights_dur)
+    tts_model_pitch.load(args.tts_weights_pitch)
 
-    tts_model.dur_pred = tts_model_dur.dur_pred
+    tts_model.pitch_pred = tts_model_pitch.pitch_pred
 
 
 
@@ -156,7 +156,7 @@ if __name__ == '__main__':
         inputs = [text_to_sequence(t) for t in inputs]
 
     tts_k = tts_model.get_step() // 1000
-    tts_dur_k = tts_model_dur.get_step() // 1000
+    tts_pitch_k = tts_model_pitch.get_step() // 1000
 
     if args.vocoder == 'wavernn':
         voc_k = voc_model.get_step() // 1000
@@ -194,14 +194,14 @@ if __name__ == '__main__':
         if input_text:
             save_path = paths.forward_output/f'{input_text[:10]}_{args.alpha}_{v_type}_{tts_k}k_amp{args.amp}.wav'
         else:
-            save_path = paths.forward_output/f'{i}_{v_type}_{tts_k}k_{tts_dur_k}dur_k.wav'
+            save_path = paths.forward_output/f'{i}_{v_type}_{tts_k}k_{tts_pitch_k}dur_k.wav'
 
         if args.vocoder == 'wavernn':
             m = torch.tensor(m).unsqueeze(0)
             voc_model.generate(m, save_path, batched, hp.voc_target, hp.voc_overlap, hp.mu_law)
         if args.vocoder == 'melgan':
             m = torch.tensor(m).unsqueeze(0)
-            torch.save(m, paths.forward_output/f'{i}_{tts_k}_{tts_dur_k}.mel')
+            torch.save(m, paths.forward_output/f'{i}_{tts_k}_{tts_pitch_k}.mel')
         elif args.vocoder == 'griffinlim':
             wav = reconstruct_waveform(m, n_iter=args.iters)
             save_wav(wav, save_path)

@@ -67,7 +67,7 @@ class ForwardTrainer:
                 m2_loss = 0. #self.l1_loss(m2_hat, m, mel_lens)
 
                 dur_loss = 0.#self.l1_loss(dur_hat.unsqueeze(1), dur.unsqueeze(1), x_lens)
-                factor = torch.linspace(1., 3., steps=pitch_hat.size(2))[None, None, :]
+                factor = torch.linspace(1., 3., steps=pitch_hat.size(2), device=device)[None, None, :]
                 factor = factor ** 2
                 pitch_hat = pitch_hat * factor
                 pitch = pitch.unsqueeze(1) * factor
