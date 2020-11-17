@@ -64,10 +64,11 @@ class ForwardTrainer:
 
                 m1_hat, m2_hat, dur_hat, pitch_hat = model(x, m, dur, mel_lens, pitch)
 
-                m1_loss = self.dtw_loss(m1_hat, m).mean() / 1000.
-                m2_loss = self.dtw_loss(m2_hat, m).mean() / 1000.
-                if m1_loss + m2_loss > 100000:
+                m1_loss = self.dtw_loss(m1_hat, m).mean() / 100000.
+                m2_loss = self.dtw_loss(m2_hat, m).mean() / 100000.
+                if torch.isnan(m1_loss):
                     m1_loss = 0.
+                if torch.isnan(m2_loss):
                     m2_loss = 0.
 
                 dur_loss = self.l1_loss(dur_hat.unsqueeze(1), dur.unsqueeze(1), x_lens)
