@@ -65,8 +65,8 @@ class ForwardTrainer:
                 m1_hat, m2_hat, dur_hat, pitch_hat = model(x, m, dur, mel_lens, pitch)
 
                 if model.get_step() > 200:
-                    m1_loss = self.dtw_loss(m1_hat, m).mean() / 1000000.
-                    m2_loss = self.dtw_loss(m2_hat, m).mean() / 1000000.
+                    m1_loss = self.dtw_loss(m1_hat, m).mean() / 100000.
+                    m2_loss = self.dtw_loss(m2_hat, m).mean() / 100000.
                 else:
                     m1_loss = torch.zeros(1, device=device)
                     m2_loss = torch.zeros(1, device=device)
