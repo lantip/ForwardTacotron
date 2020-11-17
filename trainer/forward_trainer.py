@@ -61,21 +61,25 @@ class ForwardTrainer:
                 x, m, dur, x_lens, mel_lens, pitch = x.to(device), m.to(device), dur.to(device),\
                                                      x_lens.to(device), mel_lens.to(device), pitch.to(device)
 
-                m1_hat, m2_hat, dur_hat, pitch_hat = model(x, m, dur, mel_lens, pitch)
+                m1_hat, m2_hat, dur_hat, pitch_hat = model(x, m, dur, mel_lens, pitch, only_pitch=True)
 
-                m1_loss = self.l1_loss(m1_hat, m, mel_lens)
-                m2_loss = self.l1_loss(m2_hat, m, mel_lens)
+                m1_loss = 0. #self.l1_loss(m1_hat, m, mel_lens)
+                m2_loss = 0. #self.l1_loss(m2_hat, m, mel_lens)
 
-                dur_loss = self.l1_loss(dur_hat.unsqueeze(1), dur.unsqueeze(1), x_lens)
-                pitch_loss = self.l1_loss(pitch_hat, pitch.unsqueeze(1), x_lens)
+                dur_loss = 0.#self.l1_loss(dur_hat.unsqueeze(1), dur.unsqueeze(1), x_lens)
+                factor = torch.linspace(1., 3., steps=pitch_hat.size(2))[None, None, :]
+                factor = factor ** 2
+                pitch_hat = pitch_hat * factor
+                pitch = pitch.unsqueeze(1) * factor
+                pitch_loss = self.l1_loss(pitch_hat, pitch, x_lens)
 
                 loss = m1_loss + m2_loss + 0.1 * dur_loss + 0.1 * pitch_loss
                 optimizer.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), hp.tts_clip_grad_norm)
                 optimizer.step()
-                m_loss_avg.add(m1_loss.item() + m2_loss.item())
-                dur_loss_avg.add(dur_loss.item())
+                #m_loss_avg.add(m1_loss.item() + m2_loss.item())
+                #dur_loss_avg.add(dur_loss.item())
                 step = model.get_step()
                 k = step // 1000
 

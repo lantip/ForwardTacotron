@@ -161,12 +161,16 @@ class ForwardTacotron(nn.Module):
                 nn.Conv1d(1, pitch_emb_dims, kernel_size=3, padding=1),
                 nn.Dropout(pitch_proj_dropout))
 
-    def forward(self, x, mel, dur, mel_lens, pitch):
+    def forward(self, x, mel, dur, mel_lens, pitch, only_pitch=False):
         if self.training:
             self.step += 1
 
         dur_hat = self.dur_pred(x).squeeze()
         pitch_hat = self.pitch_pred(x).transpose(1, 2)
+
+        if only_pitch:
+            return x, mel, dur, pitch_hat
+
         pitch = pitch.unsqueeze(1)
 
         x = self.embedding(x)

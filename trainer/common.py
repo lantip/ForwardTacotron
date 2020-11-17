@@ -57,6 +57,8 @@ class Averager:
         self.count = 0
 
     def get(self):
+        if self.count == 0:
+            return 0.
         return self.val / self.count
 
 

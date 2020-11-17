@@ -8,7 +8,7 @@ data_path = 'data/'
 # model ids are separate - that way you can use a new tts with an old wavernn and vice versa
 # NB: expect undefined behaviour if models were trained on different DSP settings
 voc_model_id = 'ljspeech_raw'
-tts_model_id = 'ljspeech_tts'
+tts_model_id = 'asvoice2_separate_pitch_tts'
 
 # set this to True if you are only interested in WaveRNN
 ignore_tts = False
@@ -93,8 +93,8 @@ tts_lstm_dims = 512
 tts_postnet_K = 8
 tts_num_highways = 4
 tts_dropout = 0.5
-language = 'en-us'
-tts_cleaner_name = 'english_cleaners'
+language = 'de'
+tts_cleaner_name = 'basic_cleaners'
 tts_stop_threshold = -11           # Value below which audio generation ends.
                                     # For example, for a range of [-4, 4], this
                                     # will terminate the sequence at the first
@@ -151,7 +151,7 @@ forward_clip_grad_norm = 1.0            # clips the gradient norm to prevent exp
 forward_checkpoint_every = 10_000        # checkpoints the model every X steps
 forward_plot_every = 1000
 
-forward_filter_attention = True               # whether to filter data with bad attention scores
+forward_filter_attention = False               # whether to filter data with bad attention scores
 forward_min_attention_sharpness = 0.5         # filter data with bad attention sharpness score, if 0 then no filter
 forward_min_attention_alignment = 0.95        # filter data with bad attention alignment score, if 0 then no filter
 
