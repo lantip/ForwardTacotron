@@ -175,6 +175,10 @@ class ForwardTacotron(nn.Module):
             x = torch.cat([x, pitch_proj], dim=-1)
 
         x = self.lr(x, dur_hat.detach())
+        dur_sum = torch.sum(dur_hat, dim=1).int()
+        for i in range(x.size(0)):
+            x[i, dur_sum[i]:, :] = 0
+
         x, _ = self.lstm(x)
 
         x = F.dropout(x,
@@ -187,8 +191,13 @@ class ForwardTacotron(nn.Module):
         x_post = self.post_proj(x_post)
         x_post = x_post.transpose(1, 2)
 
-        x_post = self.pad(x_post, mel.size(2))
-        x = self.pad(x, mel.size(2))
+        #x_post = self.pad(x_post, x_post.size(2))
+        #x = self.pad(x, x.size(2))
+
+        for i in range(x.size(0)):
+            x[i, dur_sum[i]:, :] = -11.5129
+            x_post[i, dur_sum[i]:, :] = -11.5129
+
         return x, x_post, dur_hat, pitch_hat
 
     def generate(self,
