@@ -41,19 +41,22 @@ def extract_pitch(save_path: Path) -> Tuple[float, float]:
     all_data = filter_max_len(train_data + val_data)
     phoneme_pitches = []
     for prog_idx, (item_id, mel_len) in enumerate(all_data, 1):
-        dur = np.load(paths.alg / f'{item_id}.npy')
-        #assert np.sum(dur) == mel_len
-        pitch = np.load(paths.raw_pitch / f'{item_id}.npy')
-        durs_cum = np.cumsum(np.pad(dur, (1, 0))).astype(np.int32)
-        pitch_char = np.zeros((dur.shape[0],), dtype=np.float)
-        for idx, a, b in zip(range(mel_len), durs_cum[:-1], durs_cum[1:]):
-            values = pitch[a:b][np.where(pitch[a:b] != 0.0)[0]]
-            values = values[np.where(values < hp.pitch_max_freq)[0]]
-            pitch_char[idx] = np.mean(values) if len(values) > 0 else 0.0
-        phoneme_pitches.append((item_id, pitch_char))
-        bar = progbar(prog_idx, len(all_data))
-        msg = f'{bar} {prog_idx}/{len(all_data)} Files '
-        stream(msg)
+        try:
+            dur = np.load(paths.alg / f'{item_id}.npy')
+            #assert np.sum(dur) == mel_len
+            pitch = np.load(paths.raw_pitch / f'{item_id}.npy')
+            durs_cum = np.cumsum(np.pad(dur, (1, 0))).astype(np.int32)
+            pitch_char = np.zeros((dur.shape[0],), dtype=np.float)
+            for idx, a, b in zip(range(mel_len), durs_cum[:-1], durs_cum[1:]):
+                values = pitch[a:b][np.where(pitch[a:b] != 0.0)[0]]
+                values = values[np.where(values < hp.pitch_max_freq)[0]]
+                pitch_char[idx] = np.mean(values) if len(values) > 0 else 0.0
+            phoneme_pitches.append((item_id, pitch_char))
+            bar = progbar(prog_idx, len(all_data))
+            msg = f'{bar} {prog_idx}/{len(all_data)} Files '
+            stream(msg)
+        except Exception as e:
+            print(e)
 
     mean, var = normalize_pitch(phoneme_pitches)
     for item_id, phoneme_pitch in phoneme_pitches:
