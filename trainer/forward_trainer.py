@@ -7,7 +7,7 @@ from torch.utils.data.dataset import Dataset
 from torch.utils.tensorboard import SummaryWriter
 
 from models.forward_tacotron import ForwardTacotron
-from trainer.common import Averager, TTSSession, MaskedL1
+from trainer.common import Averager, TTSSession, MaskedL1, SoftDTWLoss
 from trainer.dtw_cuda import SoftDTW
 from utils import hparams as hp
 from utils.checkpoints import save_checkpoint
@@ -25,7 +25,7 @@ class ForwardTrainer:
         self.writer = SummaryWriter(log_dir=paths.forward_log, comment='v1')
         self.l1_loss = MaskedL1()
         use_cuda = torch.cuda.is_available()
-        self.dtw_loss = SoftDTW(use_cuda=use_cuda)
+        self.dtw_loss = SoftDTWLoss()
 
     def train(self, model: ForwardTacotron, optimizer: Optimizer) -> None:
         for i, session_params in enumerate(hp.forward_schedule, 1):
@@ -66,7 +66,10 @@ class ForwardTrainer:
 
                 m1_hat, m2_hat, dur_hat, pitch_hat = model(x, m, dur, mel_lens, pitch)
 
-                if model.get_step() > 200:
+                dur_loss = self.l1_loss(dur_hat.unsqueeze(1), dur.unsqueeze(1), x_lens)
+                pitch_loss = self.l1_loss(pitch_hat, pitch.unsqueeze(1), x_lens)
+
+                if model.get_step() > 20000:
                     m1_loss = self.dtw_loss(m1_hat, m).mean() / 100000.
                     m2_loss = self.dtw_loss(m2_hat, m).mean() / 100000.
                 else:
@@ -78,8 +81,6 @@ class ForwardTrainer:
                 if torch.isnan(m2_loss):
                     m2_loss = torch.zeros(1, device=device)
 
-                dur_loss = self.l1_loss(dur_hat.unsqueeze(1), dur.unsqueeze(1), x_lens)
-                pitch_loss = self.l1_loss(pitch_hat, pitch.unsqueeze(1), x_lens)
 
                 loss = m1_loss + m2_loss + 0.1 * dur_loss + 0.1 * pitch_loss
                 optimizer.zero_grad()
