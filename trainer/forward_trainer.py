@@ -7,7 +7,8 @@ from torch.utils.data.dataset import Dataset
 from torch.utils.tensorboard import SummaryWriter
 
 from models.forward_tacotron import ForwardTacotron
-from trainer.common import Averager, TTSSession, MaskedL1, SoftDTWLoss
+from trainer.common import Averager, TTSSession, MaskedL1
+from trainer.dtw_cuda import SoftDTW
 from utils import hparams as hp
 from utils.checkpoints import save_checkpoint
 from utils.dataset import get_tts_datasets
@@ -23,7 +24,8 @@ class ForwardTrainer:
         self.paths = paths
         self.writer = SummaryWriter(log_dir=paths.forward_log, comment='v1')
         self.l1_loss = MaskedL1()
-        self.dtw_loss = SoftDTWLoss()
+        use_cuda = torch.cuda.is_available()
+        self.dtw_loss = SoftDTW(use_cuda=use_cuda)
 
     def train(self, model: ForwardTacotron, optimizer: Optimizer) -> None:
         for i, session_params in enumerate(hp.forward_schedule, 1):
