@@ -42,8 +42,6 @@ class SoftDTWLoss(torch.nn.Module):
         Returns:
             loss (torch.Tensor): Loss for each data point in batch. Size = batch_dim
         '''
-        x = x.transpose(1, 2)
-        y = y.transpose(1, 2)
         return SoftDTWLossFunction.apply(x, y, (self.gamma, self.spatial_independent, self.bandwidth))
 
 

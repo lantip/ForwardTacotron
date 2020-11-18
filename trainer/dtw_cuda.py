@@ -343,6 +343,8 @@ class SoftDTW(torch.nn.Module):
         :param Y: The other batch of examples, batch_size x seq_len x dims
         :return: The computed results
         """
+        X = X.transpose(1, 2)
+        Y = Y.transpose(1, 2)
 
         # Check the inputs and get the correct implementation
         func_dtw = self._get_func_dtw(X, Y)
