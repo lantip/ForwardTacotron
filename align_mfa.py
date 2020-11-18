@@ -14,7 +14,8 @@ if __name__ == '__main__':
     dur_dir = '/Users/cschaefe/Downloads/montreal-forced-aligner/mfa_outputs/mfa_durations'
 
     dur_files = Path(dur_dir).glob('**/*.npy')
-
+    save_path = Path('/Users/cschaefe/Downloads/montreal-forced-aligner/mfa_outputs/mfa_alg/')
+    save_path.mkdir(parents=True, exist_ok=True)
     for dur_file in dur_files:
         dur_list = np.load(dur_file)
         dur_text = dur_list[:, 0]
@@ -45,4 +46,5 @@ if __name__ == '__main__':
             print(e)
         durations[-1] = dur_cum[-1] - sum(durations)
         print(durations)
+        np.save(save_path / f'{dur_file.stem}.npy', np.array(durations).astype(np.float), allow_pickle=False)
         print(f'sum dur {sum(durations)} dur cum {dur_cum[-1]} ')

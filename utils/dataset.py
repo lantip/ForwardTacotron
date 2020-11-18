@@ -4,7 +4,7 @@ from typing import List, Dict
 
 from utils.dsp import *
 from utils import hparams as hp
-from utils.files import unpickle_binary
+from utils.files import unpickle_binary, get_files
 from utils.text import text_to_sequence
 from pathlib import Path
 import random
@@ -108,10 +108,18 @@ def get_tts_datasets(path: Path, batch_size, r, model_type='tacotron'):
     train_data = unpickle_binary(path/'train_dataset.pkl')
     val_data = unpickle_binary(path/'val_dataset.pkl')
     text_dict = unpickle_binary(path/'text_dict.pkl')
+    alg_files = get_files(path/'alg', '.npy')
+    alg_ids = {f.stem for f in alg_files}
+    train_data = [t for t in train_data if t[0] in alg_ids]
+    val_data = [t for t in val_data if t[0] in alg_ids]
 
     train_data = filter_max_len(train_data)
     val_data = filter_max_len(val_data)
     train_len_original = len(train_data)
+
+
+    print(f'Using {len(train_data)} train files.')
+    print(f'Using {len(val_data)} val files.')
 
     if model_type == 'forward' and hp.forward_filter_attention:
         attention_score_dict = unpickle_binary(path/'att_score_dict.pkl')
