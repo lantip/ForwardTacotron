@@ -41,8 +41,8 @@ def extract_pitch(save_path: Path) -> Tuple[float, float]:
     all_data = filter_max_len(train_data + val_data)
     phoneme_pitches = []
     for prog_idx, (item_id, mel_len) in enumerate(all_data, 1):
-        dur = np.load(paths.alg / f'{item_id}.npy')
-        assert np.sum(dur) == mel_len
+        dur = np.load(paths.alg / f'{item_id}.npy').astype(np.int32)
+        #assert np.sum(dur) == mel_len
         pitch = np.load(paths.raw_pitch / f'{item_id}.npy')
         durs_cum = np.cumsum(np.pad(dur, (1, 0)))
         pitch_char = np.zeros((dur.shape[0],), dtype=np.float)
