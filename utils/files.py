@@ -16,3 +16,4 @@ def pickle_binary(data: object, file: Union[str, Path]):
 def unpickle_binary(file: Union[str, Path]):
     with open(str(file), 'rb') as f:
         return pickle.load(f)
+

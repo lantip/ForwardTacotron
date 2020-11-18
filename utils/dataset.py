@@ -109,7 +109,17 @@ def get_tts_datasets(path: Path, batch_size, r, model_type='tacotron'):
     val_data = unpickle_binary(path/'val_dataset.pkl')
     text_dict = unpickle_binary(path/'text_dict.pkl')
 
-    train_data = filter_max_len(train_data)
+    train_data_upsampled = []
+    count_w = 0
+    for item_id, mel_len in train_data:
+        if text_dict[item_id][0] == ' ':
+            count_w += 1
+        if text_dict[item_id][-1] in {'?', '!'}:
+            train_data_upsampled.extend([(item_id, mel_len)]*10)
+        else:
+            train_data_upsampled.append((item_id, mel_len))
+
+    train_data = filter_max_len(train_data_upsampled)
     val_data = filter_max_len(val_data)
     train_len_original = len(train_data)
 
