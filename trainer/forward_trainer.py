@@ -25,7 +25,7 @@ class ForwardTrainer:
         self.writer = SummaryWriter(log_dir=paths.forward_log, comment='v1')
         self.l1_loss = MaskedL1()
         use_cuda = torch.cuda.is_available()
-        self.dtw_loss = SoftDTWLoss()
+        self.dtw_loss = SoftDTW(use_cuda=use_cuda)
 
     def train(self, model: ForwardTacotron, optimizer: Optimizer) -> None:
         for i, session_params in enumerate(hp.forward_schedule, 1):
