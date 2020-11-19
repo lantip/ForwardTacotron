@@ -57,7 +57,7 @@ class ForwardTrainer:
         pitch_loss_avg = Averager()
         device = next(model.parameters()).device  # use same device as model parameters
 
-        disc = Discriminator()
+        disc = Discriminator().to(device)
         gen = model.pitch_pred
 
         disc_opti = Adam(disc.parameters(), lr=1e-4)
