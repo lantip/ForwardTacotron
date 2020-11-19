@@ -1,4 +1,6 @@
 import time
+
+from torch.optim.adam import Adam
 from typing import Tuple
 
 import torch
@@ -6,6 +8,7 @@ from torch.optim.optimizer import Optimizer
 from torch.utils.data.dataset import Dataset
 from torch.utils.tensorboard import SummaryWriter
 
+from models.discriminator import Discriminator
 from models.forward_tacotron import ForwardTacotron
 from trainer.common import Averager, TTSSession, MaskedL1
 from utils import hparams as hp
@@ -53,14 +56,82 @@ class ForwardTrainer:
         duration_avg = Averager()
         pitch_loss_avg = Averager()
         device = next(model.parameters()).device  # use same device as model parameters
+
+        disc = Discriminator()
+        gen = model.pitch_pred
+
+        disc_opti = Adam(disc.parameters(), lr=1e-4)
+        gen_opti = Adam(gen.parameters(), lr=1e-4)
+
         for e in range(1, epochs + 1):
             for i, (x, m, ids, x_lens, mel_lens, dur, pitch) in enumerate(session.train_set, 1):
 
                 start = time.time()
                 model.train()
+
                 x, m, dur, x_lens, mel_lens, pitch = x.to(device), m.to(device), dur.to(device),\
                                                      x_lens.to(device), mel_lens.to(device), pitch.to(device)
 
+                model.step += 1
+                step = model.get_step()
+                k = model.get_step() // 1000
+
+                # train generator
+                pitch_hat = gen(x).transpose(1, 2)
+                pitch = pitch.unsqueeze(1)
+
+                feats_fake, score_fake = disc(pitch_hat)
+                feats_real, score_real = disc(pitch)
+
+                loss_g = 0.0
+                loss_g += 10. * torch.mean(torch.mean(torch.pow(score_fake - 1.0, 2), dim=[1, 2]))
+                for feat_f, feat_r in zip(feats_fake, feats_real):
+                    loss_g += 10. * torch.mean(torch.abs(feat_f - feat_r))
+
+                gen_opti.zero_grad()
+                loss_g.backward()
+                torch.nn.utils.clip_grad_norm_(gen.parameters(), 1.0)
+                gen_opti.step()
+
+                # train discriminator
+                pitch_hat = pitch_hat.detach()
+
+                _, score_fake = disc(pitch_hat)
+                _, score_real = disc(pitch)
+
+                loss_d = 0.0
+                loss_d += 10. * torch.mean(torch.mean(torch.pow(score_real - 1.0, 2), dim=[1, 2]))
+                loss_d += 10. * torch.mean(torch.mean(torch.pow(score_fake, 2), dim=[1, 2]))
+
+                disc_opti.zero_grad()
+                loss_d.backward()
+                torch.nn.utils.clip_grad_norm_(disc.parameters(), 1.0)
+                disc_opti.step()
+
+                duration_avg.add(time.time() - start)
+                speed = 1. / duration_avg.get()
+
+                msg = f'| Epoch: {e}/{epochs} ({i}/{total_iters}) | Gen Loss: {loss_g.item():#.4} ' \
+                      f'| Disc Loss: {loss_d.item():#.4} ' \
+                      f'| {speed:#.2} steps/s | Step: {k}k | '
+
+                if step % hp.forward_checkpoint_every == 0:
+                    ckpt_name = f'forward_step{k}K'
+                    save_checkpoint('forward', self.paths, model, optimizer,
+                                    name=ckpt_name, is_silent=True)
+
+                if step % hp.forward_plot_every == 0:
+                    self.generate_plots(model, session)
+
+                stream(msg)
+
+                self.writer.add_scalar('GAN_loss/gen', loss_g, model.get_step())
+                self.writer.add_scalar('GAN_loss/disc', loss_d, model.get_step())
+
+                """
+
+
+            
                 m1_hat, m2_hat, dur_hat, pitch_hat = model(x, m, dur, mel_lens, pitch, only_pitch=True)
 
                 m1_loss = 0. #self.l1_loss(m1_hat, m, mel_lens)
@@ -104,8 +175,11 @@ class ForwardTrainer:
                 self.writer.add_scalar('Duration_Loss/train', dur_loss, model.get_step())
                 self.writer.add_scalar('Params/batch_size', session.bs, model.get_step())
                 self.writer.add_scalar('Params/learning_rate', session.lr, model.get_step())
-
+        
                 stream(msg)
+                """
+
+
 
             m_val_loss, dur_val_loss, pitch_val_loss = self.evaluate(model, session.val_set)
             self.writer.add_scalar('Mel_Loss/val', m_val_loss, model.get_step())
