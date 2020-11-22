@@ -89,10 +89,10 @@ class SeriesPredictor(nn.Module):
             x_t = torch.cat([x_t, dec_in], dim=1)
             h_t = rnn(x_t)
             h_t = self.lin(h_t)
-            output.append(h_t.unsqueeze(0))
+            output.append(h_t.unsqueeze(1))
             dec_in = h_t
-        output = torch.cat(output, dim=0)
-        return output.unsqueeze(0) / alpha
+        output = torch.cat(output, dim=1)
+        return output / alpha
 
     def get_gru_cell(self, gru):
         gru_cell = nn.GRUCell(gru.input_size, gru.hidden_size)
