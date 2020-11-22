@@ -92,7 +92,7 @@ class SeriesPredictor(nn.Module):
             output.append(h_t.unsqueeze(0))
             dec_in = h_t
         output = torch.cat(output, dim=0)
-        return output / alpha
+        return output.unsqueeze(0) / alpha
 
     def get_gru_cell(self, gru):
         gru_cell = nn.GRUCell(gru.input_size, gru.hidden_size)
