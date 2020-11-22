@@ -55,6 +55,8 @@ class SeriesPredictor(nn.Module):
         self.dropout = dropout
 
     def forward(self, x, dec_in, alpha=1.0):
+        device = next(self.parameters()).device  # use same device as parameters
+
         dec_in = dec_in.unsqueeze(-1)
         x = x.transpose(1, 2)
         for conv in self.convs:
@@ -63,7 +65,7 @@ class SeriesPredictor(nn.Module):
         x = x.transpose(1, 2)
         x, _ = self.enc_rnn(x)
         b = x.size(0)
-        start = torch.zeros((b, 1, 1))
+        start = torch.zeros((b, 1, 1), device=device)
         dec_in = torch.cat([start, dec_in[:, :-1, :]], dim=1)
         x = torch.cat([x, dec_in], dim=-1)
         x, _ = self.dec_rnn(x)
@@ -71,6 +73,7 @@ class SeriesPredictor(nn.Module):
         return x / alpha
 
     def generate(self, x, alpha=1.0):
+        device = next(self.parameters()).device  # use same device as parameters
         x = x.transpose(1, 2)
         for conv in self.convs:
             x = conv(x)
@@ -78,7 +81,7 @@ class SeriesPredictor(nn.Module):
         x = x.transpose(1, 2)
         x, _ = self.enc_rnn(x)
         b = x.size(0)
-        dec_in = torch.zeros((b, 1))
+        dec_in = torch.zeros((b, 1), device=device)
         rnn = self.get_gru_cell(self.dec_rnn)
         output = []
         for t in range(x.size(1)):
