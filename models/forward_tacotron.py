@@ -200,7 +200,7 @@ class ForwardTacotron(nn.Module):
             self.step += 1
 
         x = self.embedding(x)
-        dur_hat = self.dur_pred(x, dur).squeeze(1)
+        dur_hat = self.dur_pred(x, dur).squeeze(-1)
         pitch_hat = self.pitch_pred(x, pitch).transpose(1, 2)
         pitch = pitch.unsqueeze(1)
 
