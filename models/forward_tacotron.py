@@ -49,20 +49,55 @@ class SeriesPredictor(nn.Module):
             BatchNormConv(conv_dims, conv_dims, 5, activation=torch.relu),
             BatchNormConv(conv_dims, conv_dims, 5, activation=torch.relu),
         ])
-        self.rnn = nn.GRU(conv_dims, rnn_dims, batch_first=True, bidirectional=True)
-        self.lin = nn.Linear(2 * rnn_dims, 1)
+        self.enc_rnn = nn.GRU(conv_dims, rnn_dims, batch_first=True, bidirectional=True)
+        self.dec_rnn = nn.GRU(2 * rnn_dims + 1, rnn_dims, batch_first=True, bidirectional=False)
+        self.lin = nn.Linear(rnn_dims, 1)
         self.dropout = dropout
 
-    def forward(self, x, alpha=1.0):
+    def forward(self, x, dec_in, alpha=1.0):
+        dec_in = dec_in.unsqueeze(-1)
         x = x.transpose(1, 2)
         for conv in self.convs:
             x = conv(x)
             x = F.dropout(x, p=self.dropout, training=self.training)
         x = x.transpose(1, 2)
-        x, _ = self.rnn(x)
+        x, _ = self.enc_rnn(x)
+        b = x.size(0)
+        start = torch.zeros((b, 1, 1))
+        dec_in = torch.cat([start, dec_in[:, :-1, :]], dim=1)
+        x = torch.cat([x, dec_in], dim=-1)
+        x, _ = self.dec_rnn(x)
         x = self.lin(x)
         return x / alpha
 
+    def generate(self, x, alpha=1.0):
+        x = x.transpose(1, 2)
+        for conv in self.convs:
+            x = conv(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        x = x.transpose(1, 2)
+        x, _ = self.enc_rnn(x)
+        b = x.size(0)
+        dec_in = torch.zeros((b, 1))
+        rnn = self.get_gru_cell(self.dec_rnn)
+        output = []
+        for t in range(x.size(1)):
+            x_t = x[:, t, :]
+            x_t = torch.cat([x_t, dec_in], dim=1)
+            h_t = rnn(x_t)
+            h_t = self.lin(h_t)
+            output.append(h_t.unsqueeze(0))
+            dec_in = h_t
+        output = torch.cat(output, dim=0)
+        return output / alpha
+
+    def get_gru_cell(self, gru):
+        gru_cell = nn.GRUCell(gru.input_size, gru.hidden_size)
+        gru_cell.weight_hh.data = gru.weight_hh_l0.data
+        gru_cell.weight_ih.data = gru.weight_ih_l0.data
+        gru_cell.bias_hh.data = gru.bias_hh_l0.data
+        gru_cell.bias_ih.data = gru.bias_ih_l0.data
+        return gru_cell
 
 class ConvResNet(nn.Module):
 
@@ -162,8 +197,8 @@ class ForwardTacotron(nn.Module):
             self.step += 1
 
         x = self.embedding(x)
-        dur_hat = self.dur_pred(x).squeeze()
-        pitch_hat = self.pitch_pred(x).transpose(1, 2)
+        dur_hat = self.dur_pred(x, dur).squeeze()
+        pitch_hat = self.pitch_pred(x, pitch).transpose(1, 2)
         pitch = pitch.unsqueeze(1)
 
         x = x.transpose(1, 2)
@@ -203,10 +238,10 @@ class ForwardTacotron(nn.Module):
         x = torch.as_tensor(x, dtype=torch.long, device=device).unsqueeze(0)
 
         x = self.embedding(x)
-        dur = self.dur_pred(x, alpha=alpha)
+        dur = self.dur_pred.generate(x, alpha=alpha)
         dur = dur.squeeze(2)
 
-        pitch_hat = self.pitch_pred(x).transpose(1, 2)
+        pitch_hat = self.pitch_pred.generate(x).transpose(1, 2)
         pitch_hat = pitch_function(pitch_hat)
 
         x = x.transpose(1, 2)
