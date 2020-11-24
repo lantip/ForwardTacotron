@@ -73,6 +73,7 @@ def basic_cleaners(text):
   text = to_phonemes(text)
   text = collapse_whitespace(text)
   text = text.strip()
+  text = '<' + text + '>'
   return text
 
 
