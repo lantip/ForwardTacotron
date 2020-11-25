@@ -14,6 +14,7 @@ class Paths:
         self.gta = self.data/'gta'
         self.alg = self.data/'alg'
         self.raw_pitch = self.data/'raw_pitch'
+        self.voice_mask = self.data/'voice_mask'
         self.phon_pitch = self.data/'phon_pitch'
 
         # WaveRNN/Vocoder Paths
@@ -54,6 +55,7 @@ class Paths:
         os.makedirs(self.gta, exist_ok=True)
         os.makedirs(self.alg, exist_ok=True)
         os.makedirs(self.raw_pitch, exist_ok=True)
+        os.makedirs(self.voice_mask, exist_ok=True)
         os.makedirs(self.phon_pitch, exist_ok=True)
         os.makedirs(self.voc_checkpoints, exist_ok=True)
         os.makedirs(self.voc_top_k, exist_ok=True)

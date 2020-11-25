@@ -126,6 +126,7 @@ if __name__ == '__main__':
     else:
         with open('sentences.txt') as f:
             inputs = [clean_text(l.strip()) for l in f]
+            print(inputs)
         inputs = [text_to_sequence(t) for t in inputs]
 
     tts_k = tts_model.get_step() // 1000
@@ -173,7 +174,7 @@ if __name__ == '__main__':
             voc_model.generate(m, save_path, batched, hp.voc_target, hp.voc_overlap, hp.mu_law)
         if args.vocoder == 'melgan':
             m = torch.tensor(m).unsqueeze(0)
-            torch.save(m, paths.forward_output/f'{i}_{tts_k}_alpha{args.alpha}_amp{args.amp}.mel')
+            torch.save(m, paths.forward_output/f'{i}_{tts_k}_alpha{args.alpha}_amp{args.amp}_n.mel')
         elif args.vocoder == 'griffinlim':
             wav = reconstruct_waveform(m, n_iter=args.iters)
             save_wav(wav, save_path)
