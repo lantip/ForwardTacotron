@@ -6,6 +6,7 @@ import os
 import torch
 from torch import optim
 from torch.utils.data.dataloader import DataLoader
+import soundfile as sf
 
 from models.forward_tacotron import ForwardTacotron
 from models.tacotron import Tacotron
@@ -14,6 +15,7 @@ from utils import hparams as hp
 from utils.checkpoints import restore_checkpoint
 from utils.dataset import get_tts_datasets
 from utils.display import *
+from utils.dsp import load_wav
 from utils.paths import Paths
 from utils.text.symbols import phonemes
 
@@ -26,19 +28,25 @@ def create_gta_features(model: Tacotron,
     device = next(model.parameters()).device  # use same device as model parameters
     iters = len(train_set) + len(val_set)
     dataset = itertools.chain(train_set, val_set)
+    orig_wavs = list(Path('/data/datasets/ASVoice4_breathing_cutted').glob('**/*.wav'))
+    orig_wav_ids = {p.stem: p for p in orig_wavs}
+
     for i, (x, mels, ids, x_lens, mel_lens, dur, pitch) in enumerate(dataset, 1):
         x, m, dur, x_lens, mel_lens, pitch = x.to(device), mels.to(device), dur.to(device), \
                                              x_lens.to(device), mel_lens.to(device), pitch.to(device)
 
-        with torch.no_grad():
-            _, gta, _, _ = model(x, mels, dur, mel_lens, pitch)
-        gta = gta.cpu().numpy()
-        for j, item_id in enumerate(ids):
-            mel = gta[j][:, :mel_lens[j]]
-            np.save(str(save_path/f'{item_id}.npy'), mel, allow_pickle=False)
-        bar = progbar(i, iters)
-        msg = f'{bar} {i}/{iters} Batches '
-        stream(msg)
+        if mel_lens[0] * hp.hop_length > 20000:
+            with torch.no_grad():
+                _, gta, _, _ = model(x, mels, dur, mel_lens, pitch)
+            gta = gta.cpu().numpy()
+            for j, item_id in enumerate(ids):
+                mel = gta[j][:, :mel_lens[j]]
+                wav = load_wav(orig_wav_ids[item_id])
+                sf.write(save_path/f'{item_id}_gta.wav', wav, samplerate=hp.sample_rate)
+                np.save(str(save_path/f'{item_id}_gta.mel'), mel, allow_pickle=False)
+            bar = progbar(i, iters)
+            msg = f'{bar} {i}/{iters} Batches '
+            stream(msg)
 
 
 if __name__ == '__main__':
@@ -47,6 +55,7 @@ if __name__ == '__main__':
     parser.add_argument('--force_gta', '-g', action='store_true', help='Force the model to create GTA features')
     parser.add_argument('--force_cpu', '-c', action='store_true', help='Forces CPU-only training, even when in CUDA capable environment')
     parser.add_argument('--hp_file', metavar='FILE', default='hparams.py', help='The file to use for the hyperparameters')
+
     args = parser.parse_args()
 
     hp.configure(args.hp_file)  # Load hparams from file
@@ -97,7 +106,7 @@ if __name__ == '__main__':
 
     if force_gta:
         print('Creating Ground Truth Aligned Dataset...\n')
-        train_set, val_set = get_tts_datasets(paths.data, 8, r=1, model_type='forward')
+        train_set, val_set = get_tts_datasets(paths.data, 1, r=1, model_type='forward')
         create_gta_features(model, train_set, val_set, paths.gta)
         print('\n\nYou can now train WaveRNN on GTA features - use python train_wavernn.py --gta\n')
     else:
