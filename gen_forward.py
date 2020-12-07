@@ -21,6 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('--hp_file', metavar='FILE', default='hparams.py', help='The file to use for the hyperparameters')
     parser.add_argument('--alpha', type=float, default=1., help='Parameter for controlling length regulator for speedup '
                                                                 'or slow-down of generated speech, e.g. alpha=2.0 is double-time')
+
     parser.add_argument('--amp', type=float, default=1., help='Parameter for controlling pitch amplification')
     parser.set_defaults(input_text=None)
     parser.set_defaults(weights_path=None)
@@ -155,7 +156,8 @@ if __name__ == '__main__':
     for i, x in enumerate(inputs, 1):
 
         print(f'\n| Generating {i}/{len(inputs)}')
-        _, m, dur, pitch = tts_model.generate(x, alpha=args.alpha, pitch_function=pitch_function)
+        _, m, dur, pitch, sil = tts_model.generate(x, alpha=args.alpha, pitch_function=pitch_function)
+        print(sil)
 
         if args.vocoder == 'griffinlim':
             v_type = args.vocoder

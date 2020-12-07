@@ -213,9 +213,9 @@ class ForwardTacotron(nn.Module):
 
         x = self.embedding(x)
 
-        dur_sil_hat = self.dur_sil_pred(x).squeeze(2)
+        dur_sil_hat = self.dur_sil_pred(x, alpha=alpha).squeeze(2)
         dur_sil_hat_proj = self.sil_proj(dur_sil_hat.unsqueeze(1)).transpose(1, 2)
-        dur = self.dur_pred(x + dur_sil_hat_proj, alpha=alpha).squeeze()
+        dur = self.dur_pred(x + dur_sil_hat_proj, alpha=1.)
         dur = dur.squeeze(2)
 
         pitch_hat = self.pitch_pred(x).transpose(1, 2)
