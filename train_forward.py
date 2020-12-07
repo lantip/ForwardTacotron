@@ -43,7 +43,9 @@ def create_gta_features(model: Tacotron,
                 mel = gta[j][:, :mel_lens[j]]
                 wav = load_wav(orig_wav_ids[item_id])
                 sf.write(save_path/f'{item_id}_gta.wav', wav, samplerate=hp.sample_rate)
-                np.save(str(save_path/f'{item_id}_gta.mel'), mel, allow_pickle=False)
+                mel = torch.tensor(mel).unsqueeze(0).float()
+                torch.save(mel, str(save_path/f'{item_id}_gta.mel'))
+                #np.save(str(save_path/f'{item_id}_gta.mel'), mel, allow_pickle=False)
             bar = progbar(i, iters)
             msg = f'{bar} {i}/{iters} Batches '
             stream(msg)
