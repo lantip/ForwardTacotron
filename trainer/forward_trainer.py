@@ -151,10 +151,11 @@ class ForwardTrainer:
     def generate_plots(self, model: ForwardTacotron, session: TTSSession) -> None:
         model.eval()
         device = next(model.parameters()).device
-        x, m, ids, x_lens, mel_lens, dur, pitch = session.val_sample
-        x, m, dur, mel_lens, pitch = x.to(device), m.to(device), dur.to(device), mel_lens.to(device), pitch.to(device)
+        x, m, ids, x_lens, mel_lens, dur, pitch, sil = session.val_sample
+        x, m, dur, mel_lens, pitch, sil = x.to(device), m.to(device), dur.to(device), \
+                                          mel_lens.to(device), pitch.to(device), sil.to(device)
 
-        m1_hat, m2_hat, dur_hat, pitch_hat, sil_hat = model(x, m, dur, mel_lens, pitch)
+        m1_hat, m2_hat, dur_hat, pitch_hat, sil_hat = model(x, m, dur, mel_lens, pitch, sil)
         m1_hat = np_now(m1_hat)[0, :600, :]
         m2_hat = np_now(m2_hat)[0, :600, :]
         m = np_now(m)[0, :600, :]
@@ -162,9 +163,14 @@ class ForwardTrainer:
         m1_hat_fig = plot_mel(m1_hat)
         m2_hat_fig = plot_mel(m2_hat)
         m_fig = plot_mel(m)
+
+        sil_fig = plot_pitch(np_now(sil[0]))
+        sil_gta_fig = plot_pitch(np_now(sil_hat[0]))
         pitch_fig = plot_pitch(np_now(pitch[0]))
         pitch_gta_fig = plot_pitch(np_now(pitch_hat.squeeze()[0]))
 
+        self.writer.add_figure('Silence/target', sil_fig, model.step)
+        self.writer.add_figure('Silence/ground_truth_aligned', sil_gta_fig, model.step)
         self.writer.add_figure('Pitch/target', pitch_fig, model.step)
         self.writer.add_figure('Pitch/ground_truth_aligned', pitch_gta_fig, model.step)
         self.writer.add_figure('Ground_Truth_Aligned/target', m_fig, model.step)
@@ -186,8 +192,11 @@ class ForwardTrainer:
         m2_hat_fig = plot_mel(m2_hat)
 
         pitch_gen_fig = plot_pitch(np_now(pitch_hat.squeeze()))
+        sil_gen_fig = plot_pitch(np_now(sil_hat.squeeze()))
 
         self.writer.add_figure('Pitch/generated', pitch_gen_fig, model.step)
+        self.writer.add_figure('Silence/generated', sil_gen_fig, model.step)
+
         self.writer.add_figure('Generated/target', m_fig, model.step)
         self.writer.add_figure('Generated/linear', m1_hat_fig, model.step)
         self.writer.add_figure('Generated/postnet', m2_hat_fig, model.step)
