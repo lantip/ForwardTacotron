@@ -110,7 +110,7 @@ class ForwardTrainer:
             m_val_loss, dur_val_loss, pitch_val_loss, sil_val_loss = self.evaluate(model, session.val_set)
             self.writer.add_scalar('Mel_Loss/val', m_val_loss, model.get_step())
             self.writer.add_scalar('Duration_Loss/val', dur_val_loss, model.get_step())
-            self.writer.add_scalar('Silence_Loss/val', dur_val_loss, model.get_step())
+            self.writer.add_scalar('Silence_Loss/val', sil_val_loss, model.get_step())
             self.writer.add_scalar('Pitch_Loss/val', pitch_val_loss, model.get_step())
             save_checkpoint('forward', self.paths, model, optimizer, is_silent=True)
 
