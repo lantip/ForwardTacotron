@@ -129,6 +129,10 @@ class ForwardTacotron(nn.Module):
                                         conv_dims=durpred_conv_dims,
                                         rnn_dims=durpred_rnn_dims,
                                         dropout=durpred_dropout)
+        self.dur_sil_pred = SeriesPredictor(embed_dims,
+                                        conv_dims=durpred_conv_dims,
+                                        rnn_dims=durpred_rnn_dims,
+                                        dropout=durpred_dropout)
         self.pitch_pred = SeriesPredictor(embed_dims,
                                           conv_dims=pitch_conv_dims,
                                           rnn_dims=pitch_rnn_dims,
@@ -152,18 +156,23 @@ class ForwardTacotron(nn.Module):
         self.dropout = dropout
         self.post_proj = nn.Linear(2 * postnet_dims, n_mels, bias=False)
         self.pitch_emb_dims = pitch_emb_dims
+        self.sil_proj = nn.Conv1d(1, embed_dims, kernel_size=3, padding=1)
         if pitch_emb_dims > 0:
             self.pitch_proj = nn.Sequential(
                 nn.Conv1d(1, pitch_emb_dims, kernel_size=3, padding=1),
                 nn.Dropout(pitch_proj_dropout))
 
-    def forward(self, x, mel, dur, mel_lens, pitch):
+    def forward(self, x, mel, dur, mel_lens, pitch, sil):
         if self.training:
             self.step += 1
 
         x = self.embedding(x)
-        dur_hat = self.dur_pred(x).squeeze()
         pitch_hat = self.pitch_pred(x).transpose(1, 2)
+
+        dur_sil_hat = self.dur_sil_pred(x).squeeze()
+        dur_sil_hat_proj = self.sil_proj(sil.unsqueeze(1)).transpose(1, 2)
+        dur_hat = self.dur_pred(x + dur_sil_hat_proj).squeeze()
+
         pitch = pitch.unsqueeze(1)
 
         x = x.transpose(1, 2)
@@ -192,7 +201,7 @@ class ForwardTacotron(nn.Module):
 
         x_post = self.pad(x_post, mel.size(2))
         x = self.pad(x, mel.size(2))
-        return x, x_post, dur_hat, pitch_hat
+        return x, x_post, dur_hat, pitch_hat, dur_sil_hat
 
     def generate(self,
                  x: List[int],
@@ -203,7 +212,10 @@ class ForwardTacotron(nn.Module):
         x = torch.as_tensor(x, dtype=torch.long, device=device).unsqueeze(0)
 
         x = self.embedding(x)
-        dur = self.dur_pred(x, alpha=alpha)
+
+        dur_sil_hat = self.dur_sil_pred(x).squeeze()
+        dur_sil_hat_proj = self.sil_proj(dur_sil_hat.unsqueeze(1)).transpose(1, 2)
+        dur = self.dur_pred(x + dur_sil_hat_proj, alpha=alpha).squeeze()
         dur = dur.squeeze(2)
 
         pitch_hat = self.pitch_pred(x).transpose(1, 2)
@@ -234,7 +246,7 @@ class ForwardTacotron(nn.Module):
         x_post = x_post.cpu().data.numpy()
         dur = dur.cpu().data.numpy()
 
-        return x, x_post, dur, pitch_hat
+        return x, x_post, dur, pitch_hat, dur_sil_hat
 
     def pad(self, x, max_len):
         x = x[:, :, :max_len]

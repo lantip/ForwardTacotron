@@ -13,6 +13,7 @@ class Paths:
         self.mel = self.data/'mel'
         self.gta = self.data/'gta'
         self.alg = self.data/'alg'
+        self.alg_sil = self.data/'alg_sil'
         self.raw_pitch = self.data/'raw_pitch'
         self.voice_mask = self.data/'voice_mask'
         self.phon_pitch = self.data/'phon_pitch'
@@ -54,6 +55,7 @@ class Paths:
         os.makedirs(self.mel, exist_ok=True)
         os.makedirs(self.gta, exist_ok=True)
         os.makedirs(self.alg, exist_ok=True)
+        os.makedirs(self.alg_sil, exist_ok=True)
         os.makedirs(self.raw_pitch, exist_ok=True)
         os.makedirs(self.voice_mask, exist_ok=True)
         os.makedirs(self.phon_pitch, exist_ok=True)

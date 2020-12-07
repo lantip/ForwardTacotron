@@ -201,8 +201,9 @@ class ForwardDataset(Dataset):
         mel = np.load(str(self.path/'mel'/f'{item_id}.npy'))
         mel_len = mel.shape[-1]
         dur = np.load(str(self.path/'alg'/f'{item_id}.npy'))
+        dur_sil = np.load(str(self.path/'alg_sil'/f'{item_id}.npy'))
         pitch = np.load(str(self.path/'phon_pitch'/f'{item_id}.npy'))
-        return x, mel, item_id, mel_len, dur, pitch
+        return x, mel, item_id, mel_len, dur, pitch, dur_sil
 
     def __len__(self):
         return len(self.metadata)
@@ -241,7 +242,10 @@ def collate_tts(batch, r):
         pitch = [pad1d(x[5][:max_x_len], max_x_len) for x in batch]
         pitch = np.stack(pitch)
         pitch = torch.tensor(pitch).float()
-        return chars, mel, ids, x_lens, mel_lens, dur, pitch
+        dur_sil = [pad1d(x[6][:max_x_len], max_x_len) for x in batch]
+        dur_sil = np.stack(dur_sil)
+        dur_sil = torch.tensor(dur_sil).float()
+        return chars, mel, ids, x_lens, mel_lens, dur, pitch, dur_sil
     else:
         return chars, mel, ids, x_lens, mel_lens
 
