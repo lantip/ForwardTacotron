@@ -82,7 +82,15 @@ if __name__ == '__main__':
     assert len(wav_files) > 0, f'Found no wav files in {path}, exiting.'
 
     text_dict = ljspeech(path)
-    text_dict = {item_id: text for item_id, text in text_dict.items() if item_id in wav_ids}
+
+
+    text_dict_a = {item_id: text for item_id, text in text_dict.items() if item_id in wav_ids}
+
+    if len(text_dict_a) < 1:
+        text_dict = {item_id.split(';')[0]: text.split(';')[1] for item_id, text in text_dict.items() if item_id.split(';')[0] in wav_ids}
+    else:
+        text_dict = text_dict_a
+
     wav_files = [w for w in wav_files if w.stem in text_dict]
     print(f'Using {len(wav_files)} wav files that are indexed in metafile.\n')
 
@@ -115,6 +123,8 @@ if __name__ == '__main__':
     random.shuffle(dataset)
     train_dataset = dataset[hp.n_val:]
     val_dataset = dataset[:hp.n_val]
+
+    #print(hp.n_val)
     # sort val dataset longest to shortest
     val_dataset.sort(key=lambda d: -d[1])
     print(f'First val sample: {val_dataset[0][0]}')
