@@ -7,7 +7,7 @@ from utils.text.symbols import phonemes
 from utils.paths import Paths
 import argparse
 from utils.text import text_to_sequence, clean_text
-from utils.display import simple_table
+from utils.display import simple_table, plot_pitch
 from utils.dsp import reconstruct_waveform, save_wav
 
 if __name__ == '__main__':
@@ -157,7 +157,7 @@ if __name__ == '__main__':
 
         print(f'\n| Generating {i}/{len(inputs)}')
         _, m, dur, pitch, sil = tts_model.generate(x, alpha=args.alpha, pitch_function=pitch_function)
-        print(sil)
+        print(sil[sil > 1])
 
         if args.vocoder == 'griffinlim':
             v_type = args.vocoder
@@ -176,7 +176,7 @@ if __name__ == '__main__':
             voc_model.generate(m, save_path, batched, hp.voc_target, hp.voc_overlap, hp.mu_law)
         if args.vocoder == 'melgan':
             m = torch.tensor(m).unsqueeze(0)
-            torch.save(m, paths.forward_output/f'{i}_{tts_k}_alpha{args.alpha}_amp{args.amp}_n.mel')
+            torch.save(m, paths.forward_output/f'{i}_{tts_k}_alpha{args.alpha}_amp{args.amp}_n5.mel')
         elif args.vocoder == 'griffinlim':
             wav = reconstruct_waveform(m, n_iter=args.iters)
             save_wav(wav, save_path)
