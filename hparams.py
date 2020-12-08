@@ -17,8 +17,8 @@ ignore_tts = False
 # DSP --------------------------------------------------------------------------------------------------------------#
 
 # Settings for all models
-sample_rate = 22050
-n_fft = 1024
+sample_rate = 44100
+n_fft = 2048
 fft_bins = n_fft // 2 + 1
 num_mels = 80
 hop_length = 256                    # 12.5ms - in line with Tacotron 2 paper
@@ -94,7 +94,7 @@ tts_postnet_K = 8
 tts_num_highways = 4
 tts_dropout = 0.5
 language = 'id'
-tts_cleaner_name = 'basic_cleaners'
+tts_cleaner_name = 'indonesian_cleaners'
 tts_stop_threshold = -11           # Value below which audio generation ends.
                                     # For example, for a range of [-4, 4], this
                                     # will terminate the sequence at the first
